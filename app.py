@@ -7,12 +7,11 @@ import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Análisis de Placa Insectocaptor", layout="wide")
 st.title("🪰 Análisis de Saturación de Placas")
-st.markdown("Subí una imagen. Si es similar a una placa vacía de referencia, será detectada como vacía.")
+st.markdown("Subí una imagen. Si es muy similar a la placa vacía de referencia, será detectada como vacía.")
 
-# Cargar imagen de referencia vacía
 @st.cache_data
 def cargar_referencia():
-    referencia = cv2.imread("placa_vacia.jpg")  # <-- guardá tu imagen vacía con ese nombre en la misma carpeta
+    referencia = cv2.imread("placa_vacia.jpg")  # Asegurate de tener esta imagen en tu carpeta
     return cv2.resize(referencia, (800, 1200))
 
 ref_vacia = cargar_referencia()
@@ -25,16 +24,14 @@ if archivo is not None:
     imagen = cv2.cvtColor(imagen, cv2.COLOR_RGB2BGR)
     imagen = cv2.resize(imagen, (800, 1200))
 
-    # Comparación por similitud estructural (SSIM)
     gray_ref = cv2.cvtColor(ref_vacia, cv2.COLOR_BGR2GRAY)
     gray_img = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
     indice_ssim, _ = ssim(gray_ref, gray_img, full=True)
 
-    if indice_ssim > 0.90:
+    if indice_ssim > 0.40:  # 🟢 Umbral bajo para tolerar reflejos
         st.markdown(f"### ⚪ Resultado: **Placa vacía o sin insectos visibles (SSIM: {indice_ssim:.2f})**")
-        st.image(imagen_pil, caption="Placa cargada (detectada como vacía)", use_container_width=True)
+        st.image(imagen_pil, caption="📸 Placa cargada (detectada como vacía)", use_container_width=True)
     else:
-        # Procesamiento normal para detectar insectos
         gris = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
         gris = cv2.equalizeHist(gris)
         _, binaria = cv2.threshold(gris, 105, 255, cv2.THRESH_BINARY_INV)
