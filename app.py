@@ -6,7 +6,7 @@ from PIL import Image
 
 st.set_page_config(page_title="Análisis de Placa Insectocaptor", layout="wide")
 st.title("🪰 Análisis de Saturación de Placas")
-st.markdown("Subí una imagen de la placa y el sistema calculará la saturación total y mostrará tres vistas.")
+st.markdown("Subí una imagen de la placa y el sistema calculará la saturación total. Si está vacía, se notificará.")
 
 archivo = st.file_uploader("📷 Subí una imagen de la placa", type=["jpg", "jpeg", "png"])
 
@@ -16,7 +16,6 @@ if archivo is not None:
     imagen = cv2.cvtColor(imagen, cv2.COLOR_RGB2BGR)
     imagen = cv2.resize(imagen, (800, 1200))
 
-    # Recorte zona útil
     alto, ancho = imagen.shape[:2]
     y1, y2 = int(alto * 0.1), int(alto * 0.9)
     x1, x2 = int(ancho * 0.1), int(ancho * 0.9)
@@ -25,21 +24,23 @@ if archivo is not None:
     # Procesamiento por 3 canales
     gris = cv2.cvtColor(zona_util, cv2.COLOR_BGR2GRAY)
     gris = cv2.equalizeHist(gris)
-    _, bin_gris = cv2.threshold(gris, 120, 255, cv2.THRESH_BINARY_INV)
+    _, bin_gris = cv2.threshold(gris, 130, 255, cv2.THRESH_BINARY_INV)
 
     hsv = cv2.cvtColor(zona_util, cv2.COLOR_BGR2HSV)
     canal_v = hsv[:, :, 2]
-    _, bin_v = cv2.threshold(canal_v, 130, 255, cv2.THRESH_BINARY_INV)
+    _, bin_v = cv2.threshold(canal_v, 140, 255, cv2.THRESH_BINARY_INV)
 
     lab = cv2.cvtColor(zona_util, cv2.COLOR_BGR2Lab)
     canal_l = lab[:, :, 0]
-    _, bin_l = cv2.threshold(canal_l, 130, 255, cv2.THRESH_BINARY_INV)
+    _, bin_l = cv2.threshold(canal_l, 140, 255, cv2.THRESH_BINARY_INV)
 
+    # Fusión de máscaras
     binaria_comb = cv2.bitwise_or(bin_gris, bin_v)
     binaria_comb = cv2.bitwise_or(binaria_comb, bin_l)
 
+    # Filtro para ignorar las líneas (consideradas muy delgadas)
     kernel = np.ones((2, 2), np.uint8)
-    binaria_comb = cv2.morphologyEx(binaria_comb, cv2.MORPH_CLOSE, kernel)
+    binaria_comb = cv2.morphologyEx(binaria_comb, cv2.MORPH_OPEN, kernel)
 
     # División en celdas
     filas, columnas = 12, 10
@@ -73,8 +74,13 @@ if archivo is not None:
 
     saturacion_total = (suma_total_insectos / suma_total_pixeles) * 100
 
-    st.markdown(f"### 📊 Saturación Total Estimada: **{saturacion_total:.2f}%**")
+    # Mostrar resultado
+    if saturacion_total < 10:
+        st.markdown("### ⚪ Resultado: **Placa vacía o sin capturas significativas**")
+    else:
+        st.markdown(f"### 📊 Saturación Total Estimada: **{saturacion_total:.2f}%**")
 
+    # Mostrar visuales
     col1, col2, col3 = st.columns(3)
 
     with col1:
